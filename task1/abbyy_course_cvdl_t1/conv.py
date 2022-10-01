@@ -22,7 +22,13 @@ class ConvLayer(BaseLayer):
         assert(out_channels > 0)
         assert(kernel_size % 2 == 1)
         super().__init__()
-        raise NotImplementedError()
+        self.parameters.append(np.ones((out_channels, in_channels, kernel_size, kernel_size)))
+        self.parameters.append(np.zeros(out_channels))
+
+        self.parameters_grads.append(np.zeros_like(self.parameters[0]))
+        self.parameters_grads.append(np.zeros_like(self.parameters[1]))
+        
+
 
     @property
     def kernel_size(self):
@@ -43,7 +49,9 @@ class ConvLayer(BaseLayer):
         Метод не проверяется в тестах -- можно релизовать слой без
         использования этого метода.
         """
-        pass
+        padding = np.array([(0, 0) for i in range(len(tensor.shape))])
+        padding[axis] = (one_side_pad, one_side_pad)
+        return np.pad(tensor, padding)
 
     @staticmethod
     def _cross_correlate(input, kernel):
@@ -55,10 +63,49 @@ class ConvLayer(BaseLayer):
         """
         assert kernel.shape[-1] == kernel.shape[-2]
         assert kernel.shape[-1] % 2 == 1
-        pass
+
+        return np.sum(np.multiply(input, kernel))
 
     def forward(self, input: np.ndarray) -> np.ndarray:
-        raise NotImplementedError()
+        self.input = input
+        m, _, n_H, n_W = input.shape
+        padding_size = (self.kernel_size - 1) // 2 
+        X_pad = self._pad_zeros(input, padding_size)
+        
+        output = np.zeros((m, self.out_channels, n_H, n_W))
+        
+        for i in range(m):    
+            img = X_pad[i]
+            for c in range(self.out_channels):
+                fil = self.parameters[0][c]
+                b = self.parameters[1][c]
+                for w in range(n_W):
+                    for h in range(n_H):
+                        w_slice = slice(w, w + self.kernel_size)
+                        h_slice = slice(h, h + self.kernel_size)
+                        img_slice = img[:, h_slice, w_slice]
+                        output[i, c, h, w] += self._cross_correlate(img_slice, fil) + b
+                        
+        return output
 
     def backward(self, output_grad: np.ndarray)->np.ndarray:
-        raise NotImplementedError()
+        input = self.input
+        m, _, n_H, n_W = input.shape
+        
+        padding_size = (self.kernel_size - 1) // 2
+        grad_input = np.zeros((m, self.in_channels, n_H + 2 * padding_size, n_W + 2 * padding_size))
+        X_pad = self._pad_zeros(input, padding_size)
+        
+        for i in range(m):     
+            img = X_pad[i]
+            for c in range(self.out_channels):
+                for w in range(n_W):
+                    for h in range(n_H):
+                        w_slice = slice(w, w + self.kernel_size)
+                        h_slice = slice(h, h + self.kernel_size)
+                        img_slice = img[:, h_slice, w_slice]
+                        grad_input[i, :, h_slice, w_slice] += self.parameters[0][c] * output_grad[i, c, h, w]
+                        self.parameters_grads[0][c, :, :, :] += img_slice * output_grad[i, c, h, w]
+                        self.parameters_grads[1][c] += output_grad[i, c, h, w]
+
+        return grad_input[:, :, padding_size:-padding_size, padding_size:-padding_size]

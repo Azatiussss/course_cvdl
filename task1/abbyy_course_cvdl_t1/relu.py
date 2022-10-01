@@ -8,12 +8,15 @@ class ReluLayer(BaseLayer):
     Не имеет параметров.
     """
     def __init__(self):
-        super().__init__()
-        raise NotImplementedError()
+        super(ReluLayer, self).__init__()
+        self.input = None
 
     def forward(self, input: np.ndarray) -> np.ndarray:
-        raise NotImplementedError()
+        self.input = input
+        output = np.maximum(input, 0)
+        return output
 
     def backward(self, output_grad: np.ndarray) -> np.ndarray:
-        raise NotImplementedError()
+        grad_input = np.multiply(output_grad, self.input > 0)
+        return grad_input
 
