@@ -1,5 +1,6 @@
 from torch import nn
 import torch
+from torch.nn.functional import pad
 from abbyy_course_cvdl_t2.head import CenterNetHead
 from abbyy_course_cvdl_t2.backbone import ResnetBackbone
 from abbyy_course_cvdl_t2.convert import PointsToObjects
@@ -15,8 +16,17 @@ class PointsNonMaxSuppression(nn.Module):
         self.kernel_size = kernel_size
 
     def forward(self, points):
-        raise NotImplementedError()
-        return points
+        padding = self.kernel_size // 2
+        padded_probs = pad(torch.max(points[:, :-4], dim=1)[0], (padding, padding, padding, padding))
+        output = torch.zeros_like(points)
+        for b in range(points.shape[0]):
+            for i in range(padding, points.shape[-2] + padding):
+                for j in range(padding, points.shape[-1] + padding):
+                    max_index = torch.argmax(padded_probs[b, i:i+self.kernel_size, j:j+self.kernel_size])
+                    if max_index // self.kernel_size == max_index % self.kernel_size == self.kernel_size // 2:
+                        output[b, :, i - padding, j - padding] = points[b, :, i - padding, j - padding]
+                
+        return output
 
 
 class ScaleObjects(nn.Module):

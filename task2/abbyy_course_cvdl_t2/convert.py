@@ -10,6 +10,7 @@
 import torch
 from torch import nn
 from typing import Tuple
+import torch.nn.functional as F
 
 
 class ObjectsToPoints(nn.Module):
@@ -95,11 +96,11 @@ class ObjectsToPoints(nn.Module):
         return points_heatmap
 
     @classmethod
-    def create_default_heatmaps(cls, b:int, hw: int, с:int) -> torch.Tensor:
+    def create_default_heatmaps(cls, b:int, hw: int, c:int) -> torch.Tensor:
         """
         По умолчанию heatmaps - пустые и заполнены нулями.
         """
-        raise NotImplementedError()
+        return torch.zeros(size=(b, c + 4, hw, hw))
 
     @classmethod
     def compute_objects_locations(cls, objects: torch.Tensor)-> Tuple[torch.Tensor, torch.Tensor, torch.Tensor]:
@@ -109,7 +110,10 @@ class ObjectsToPoints(nn.Module):
             batch_idx[B * N], y_idx[B * N], x_idx[B * N]
         """
         batch_size, objects_per_image, d6 = objects.shape
-        raise NotImplementedError()
+        batch_idx = (torch.arange(batch_size, dtype=torch.long).unsqueeze(-1) @ torch.ones(size=(1, objects_per_image,), dtype=torch.long)).flatten()
+        y_idx = objects[..., 0].flatten()
+        x_idx = objects[..., 1].flatten()
+
         return batch_idx.long(), y_idx.long(), x_idx.long()
 
     @classmethod
@@ -119,7 +123,9 @@ class ObjectsToPoints(nn.Module):
         Возвращает для всех объектов их поправки положения их центров по отношению к локациям
          в виде двух плоских тензоров: dy[B * N], dx[B * N]
         """
-        raise NotImplementedError()
+        dy = objects[..., 0].flatten() - objects[..., 0].flatten().long()
+        dx = objects[..., 1].flatten() - objects[..., 1].flatten().long()
+
         return dy, dx
 
     @classmethod
@@ -129,7 +135,8 @@ class ObjectsToPoints(nn.Module):
         Возвращает для всех объектов их размеры в пикселях в виде двух плоских тензоров:
             dy[B * N], dx[B * N]
         """
-        raise NotImplementedError()
+        h =objects[..., 2]
+        w = objects[..., 3]
         return h.flatten(), w.flatten()
 
     @classmethod
@@ -138,7 +145,8 @@ class ObjectsToPoints(nn.Module):
         Сглаживает one-hot points_heatmap ядром с гауссианой.
         Скорее всего, через свёртку с ядром.
         """
-        raise NotImplementedError()
+        smoothed_heatmap = torch.cat([F.conv2d(points_heatmap[:, i:i+1, :, :], smooth_kernel.unsqueeze(0).unsqueeze(0), padding='same') for i in range(points_heatmap.shape[1])], dim=1)
+        return smoothed_heatmap
 
     @staticmethod
     def _gaussian_2d(kernel_size: int) -> torch.Tensor:
@@ -181,5 +189,28 @@ class PointsToObjects(nn.Module):
         self.min_conf = min_confidence
 
     def forward(self, points_heatmap):
-        raise NotImplementedError()
-        return objects
+        batch_size = points_heatmap.shape[0]
+        num_classes = points_heatmap.shape[1] - 4
+        out_tensor = torch.zeros(batch_size, self.top_k, 6)
+        probs, offsets, sizes = torch.split(points_heatmap, [num_classes, 2, 2], dim=1)
+        max_probs = torch.max(probs, dim=1)[0]
+        for i in range(batch_size):
+            confidence, indices = torch.topk(max_probs[i].flatten(), k=self.top_k)
+            indices_y = indices // points_heatmap.shape[-1]
+            indices_x = indices % points_heatmap.shape[-1]
+            cls = torch.argmax(probs[i, :, indices_y, indices_x], dim=0)
+            y = indices_y + offsets[i, 0, indices_y, indices_x]
+            x = indices_x + offsets[i, 1, indices_y, indices_x]
+            h = sizes[i, 0, indices_y, indices_x]
+            w = sizes[i, 1, indices_y, indices_x]
+            out_tensor[i, :, 0] = y
+            out_tensor[i, :, 1] = x
+            out_tensor[i, :, 2] = h
+            out_tensor[i, :, 3] = w
+            out_tensor[i, :, 4] = cls
+            out_tensor[i, :, 5] = confidence
+            out_tensor[i, confidence < self.min_conf, :] = 0
+
+        return out_tensor
+
+
