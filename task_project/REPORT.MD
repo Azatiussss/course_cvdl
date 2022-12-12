@@ -1,0 +1,9 @@
+Simultaneous ce and triplet loss optimization only hard examples: https://wandb.ai/azatiusssss/danish-fungi/reports/---VmlldzozMTI1ODc2?accessToken=5is5uc3n5tjf9w30vcuzb3uk63k9acw0fujcrv7ry6oaxlt5bbm42svtczuwj5r5
+Triplet loss and then freeze transformer layers and train only classification head only hard examples: train embs: https://wandb.ai/azatiusssss/danish-fungi/reports/--VmlldzozMTI1OTIw?accessToken=270xjmh5qscx2r1110wo1e7h01raspnbk5qzp4x6y5zmnjtkte6npi40r1n128zb,
+train head: https://wandb.ai/azatiusssss/danish-fungi/reports/--VmlldzozMTI1OTI2?accessToken=ru9xefmbgokxe05oxl8qoxa0bge38xwvb3sg1ekr59ap4fqqhykkpn5ajqflpno1
+Triplet loss and then freeze transformer layers and train only classification head: train embs: https://wandb.ai/azatiusssss/danish-fungi/reports/--VmlldzozMTI1OTU0?accessToken=s97qt4kcsab4h9bdbm90e3nzbhui4isjdfzlpaf6qy2inpdp2io4s7kuhl8vqujg,
+train head: https://wandb.ai/azatiusssss/danish-fungi/reports/--VmlldzozMTI1OTU1?accessToken=yypaailk62jp0xfj5ntehlhn4g06tyh4qvuciknpb9pf3wi223u5da8vf2vgd881
+Same scheme as previous, but am softmax loss for embs: train embs: https://wandb.ai/azatiusssss/danish-fungi/reports/--VmlldzozMTI1OTY3?accessToken=thr0l2uq5yvezce84htue7f27jfsv2pok9cgkgp18j944zhips4qgk2t99rj6znn,
+train head: https://wandb.ai/azatiusssss/danish-fungi/reports/--VmlldzozMTI1OTcz?accessToken=35k5vbo8jnawt5e7vtqynydprmh5jptd5gjzvqr9adejnyuzg0mkiuilyw0cso7h
+Same scheme as previous, but arcface for embs: train embs: https://wandb.ai/azatiusssss/danish-fungi/reports/--VmlldzozMTI1OTg0?accessToken=z25ly8zbkspzgiw9gvbodstrri2tyduwdbtola3bkyy9ma5j3gx253eyek18f57k,
+train head: https://wandb.ai/azatiusssss/danish-fungi/reports/--VmlldzozMTI1OTky?accessToken=pf8t1rufmoqapm49m5v63s7m49vqlkam0klvlowcumgfd7ewfe2l1ksdf5lwtu2j
